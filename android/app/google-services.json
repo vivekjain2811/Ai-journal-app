@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "364359231026",
+    "project_id": "aijoournal",
+    "storage_bucket": "aijoournal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364359231026:android:91bffe52a0141e88177e2b",
+        "android_client_info": {
+          "package_name": "com.example.ai_journal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6thybq4KzS8LF8ycghb4NZj-gXeMQenc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
