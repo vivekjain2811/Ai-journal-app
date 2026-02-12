@@ -3,6 +3,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import 'signup_screen.dart';
 import '../services/auth_service.dart';
+import '../widgets/gradient_scaffold.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GradientScaffold(
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),

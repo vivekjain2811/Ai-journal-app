@@ -5,7 +5,7 @@ class AppColors {
   // Light Mode Colors
   static const Color primaryLight = Color(0xFF6A9C89); // Calming Green
   static const Color secondaryLight = Color(0xFFC4D7B2); // Soft Green
-  static const Color backgroundLight = Color(0xFFF7F7F7); // Soft White
+  static const Color backgroundLight = Color(0xFFF5F7FA); // Modern Cool Grey
   static const Color surfaceLight = Color(0xFFFFFFFF); // Pure White
   static const Color textPrimaryLight = Color(0xFF2D3335); // Dark Grey
   static const Color textSecondaryLight = Color(0xFF6B7274); // Medium Grey
@@ -14,7 +14,7 @@ class AppColors {
   // Dark Mode Colors
   static const Color primaryDark = Color(0xFF8ABFA3); // Lighter Green for Dark Mode
   static const Color secondaryDark = Color(0xFF4A5C54); // Darker Green
-  static const Color backgroundDark = Color(0xFF1E2022); // Dark Grey/Black
+  static const Color backgroundDark = Color(0xFF1A1C1E); // Deep Neutral Dark
   static const Color surfaceDark = Color(0xFF2C2F31); // Slightly Lighter Dark
   static const Color textPrimaryDark = Color(0xFFE0E0E0); // Light Grey
   static const Color textSecondaryDark = Color(0xFFA0A0A0); // Medium Grey

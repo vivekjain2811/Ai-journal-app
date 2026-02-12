@@ -1,48 +1,132 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/user_model.dart';
+import '../services/user_service.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/gradient_scaffold.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final user = FirebaseAuth.instance.currentUser;
+    final UserService userService = UserService();
+
+    return GradientScaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            const CircleAvatar(
-              radius: 50,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=12'),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'User Name',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            Text(
-              'user@example.com',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      body: StreamBuilder<UserModel?>(
+        stream: user != null ? userService.getUserProfile(user.uid) : const Stream.empty(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final userData = snapshot.data;
+          
+          // Fallback values if data is missing or user just signed up and has no profile doc yet
+          final String displayName = userData?.username?.isNotEmpty == true 
+              ? userData!.username! 
+              : (user?.displayName ?? 'User Name');
+          final String email = userData?.email ?? user?.email ?? 'No Email';
+          final String? photoUrl = userData?.photoUrl ?? user?.photoURL;
+          final String motto = userData?.motto ?? 'Driven by purpose.'; // Default motto
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
               children: [
-                _buildStatCard(context, 'Total Entries', '42'),
-                _buildStatCard(context, 'Day Streak', '5 🔥'),
+                // Profile Image
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.grey[300],
+                  backgroundImage: photoUrl != null 
+                      ? NetworkImage(photoUrl) 
+                      : const NetworkImage('https://i.pravatar.cc/150?img=12'), // Fallback placeholder
+                ),
+                const SizedBox(height: 16),
+                
+                // Name & Email
+                Text(
+                  displayName,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                Text(
+                  email,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                
+                // Motto
+                if (motto.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '"$motto"',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 24),
+                
+                // Stats Row (Mock data for now or real if implementing count)
+                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildStatCard(context, 'Total Entries', '42'), // TODO: Connect to real count
+                    _buildStatCard(context, 'Day Streak', '5 🔥'), // TODO: Connect to real streak
+                  ],
+                ),
+                const SizedBox(height: 32),
+                
+                // Details Section (Phone, etc.)
+                if (userData?.phoneNumber != null && userData!.phoneNumber!.isNotEmpty)
+                   _buildInfoTile(context, Icons.phone, userData.phoneNumber!),
+
+                const SizedBox(height: 32),
+
+                // Edit Button
+                PrimaryButton(
+                  text: 'Edit Profile',
+                  isOutlined: true,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditProfileScreen(user: userData),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
-            const SizedBox(height: 32),
-            PrimaryButton(
-              text: 'Edit Profile',
-              isOutlined: true,
-              onPressed: () {},
-            ),
-          ],
-        ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(BuildContext context, IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ],
       ),
     );
   }
@@ -55,7 +139,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

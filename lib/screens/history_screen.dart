@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/journal_entry.dart';
 import '../widgets/journal_list_tile.dart';
 import '../services/journal_service.dart';
+import '../widgets/gradient_scaffold.dart';
 import 'journal_entry_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -32,9 +33,11 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
         title: const Text('History'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

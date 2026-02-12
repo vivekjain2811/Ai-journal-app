@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/journal_entry.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../services/journal_service.dart';
 import '../widgets/mood_selector.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/gradient_scaffold.dart';
 
 class JournalEntryScreen extends StatefulWidget {
   final JournalEntry? entry;
@@ -29,17 +31,69 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     }
   }
 
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  
+  // Re-write _listen to be safer for appending
+  void _toggleListening() async {
+    if (_isListening) {
+       _speech.stop();
+       setState(() => _isListening = false);
+       return;
+    }
+
+    bool available = await _speech.initialize(
+      onStatus: (val) {
+        if (mounted) {
+           if (val == 'done' || val == 'notListening') {
+             setState(() => _isListening = false);
+           }
+        }
+      },
+      onError: (val) => debugPrint('onError: $val'),
+    );
+
+    if (available) {
+      setState(() => _isListening = true);
+      // Store current text length to append? 
+      // Actually, speech_to_text provides cumulative results for a session.
+      // So we can capture the text BEFORE session, and add the result.
+      String originalText = _journalController.text;
+      
+      _speech.listen(
+        onResult: (val) {
+          if (mounted) {
+            setState(() {
+              String newText = val.recognizedWords;
+              if (originalText.isNotEmpty) {
+                 _journalController.text = "$originalText $newText";
+              } else {
+                 _journalController.text = newText;
+              }
+              // Move cursor to end
+              _journalController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _journalController.text.length));
+            });
+          }
+        },
+      );
+    }
+  }
+
   @override
   void dispose() {
     _journalController.dispose();
+    _speech.cancel(); // cancel listening on dispose
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
         title: Text(widget.entry == null ? 'New Journal' : 'Edit Journal'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
@@ -121,6 +175,11 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _toggleListening,
+        backgroundColor: _isListening ? Colors.redAccent : Theme.of(context).primaryColor,
+        child: Icon(_isListening ? Icons.mic_off : Icons.mic),
       ),
     );
   }
