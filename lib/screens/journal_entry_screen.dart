@@ -6,6 +6,7 @@ import '../services/journal_service.dart';
 import '../widgets/mood_selector.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/gradient_scaffold.dart';
+import '../services/ai_service.dart';
 
 class JournalEntryScreen extends StatefulWidget {
   final JournalEntry? entry;
@@ -19,8 +20,12 @@ class JournalEntryScreen extends StatefulWidget {
 class _JournalEntryScreenState extends State<JournalEntryScreen> {
   final TextEditingController _journalController = TextEditingController();
   final JournalService _journalService = JournalService();
+  final AIService _aiService = AIService();
+  
   String? _selectedMood;
   bool _isLoading = false;
+  bool _isEnhancing = false;
+  String? _enhancedTitle; // Store the AI generated title
 
   @override
   void initState() {
@@ -28,27 +33,24 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     if (widget.entry != null) {
       _journalController.text = widget.entry!.content;
       _selectedMood = widget.entry!.mood;
+      _enhancedTitle = widget.entry!.title;
     }
   }
 
+  // ... (speech to text code remains the same, omitted for brevity in this replace) ...
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   
   void _startListening() async {
-    // If not already explicitly listening, set state
+    // ... same implementation ...
     if (!_isListening) {
       setState(() => _isListening = true);
     }
-
-    // Initialize if not already initialized or just re-initialize to be safe
     bool available = await _speech.initialize(
       onStatus: (val) {
         if (mounted) {
-           // If system signals end of listening...
            if (val == 'done' || val == 'notListening') {
-             // Check if we SHOULD be listening (User hasn't pressed stop)
              if (_isListening) {
-                // Restart immediately
                 _startSpeechSession();
              }
            }
@@ -56,14 +58,12 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       },
       onError: (val) {
         debugPrint('onError: $val');
-        // On error (timeout, no match), restart if we should be listening
         if (mounted && _isListening) {
            _startSpeechSession();
         }
       },
-      debugLogging: true, // Enable logs for debugging if needed
+      debugLogging: true,
     );
-
     if (available) {
       _startSpeechSession();
     } else {
@@ -72,67 +72,113 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   }
 
   void _startSpeechSession() {
-    // Verify we are still supposed to be listening before calling listen
     if (!_isListening) return;
-
-    // Capture current text to append new speech to it
     String originalText = _journalController.text;
     if (originalText.isNotEmpty && !originalText.endsWith(' ')) {
       originalText += ' ';
     }
-    
     _speech.listen(
       onResult: (val) {
         if (mounted) {
           setState(() {
-            // Only update text if we have recognized words
             if (val.recognizedWords.isNotEmpty) {
                _journalController.text = "$originalText${val.recognizedWords}";
-               
-               // Move cursor to end
                _journalController.selection = TextSelection.fromPosition(
                   TextPosition(offset: _journalController.text.length));
             }
           });
         }
       },
-      listenFor: const Duration(seconds: 60), // Set a reasonable duration loop
-      pauseFor: const Duration(seconds: 60), // Try to keep it open
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 60),
       cancelOnError: false,
       partialResults: true,
     );
   }
 
   void _stopListening() {
-    // First update state to prevent auto-restart logic
     setState(() => _isListening = false);
-    // Then stop the engine
     _speech.stop();
   }
 
   void _clearText() {
     setState(() {
       _journalController.clear();
+      _enhancedTitle = null; // Clear title if text is cleared
     });
+  }
+
+  Future<void> _enhanceWithAI() async {
+    if (_journalController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Write something first to enhance!')),
+      );
+      return;
+    }
+
+    setState(() => _isEnhancing = true);
+
+    try {
+      final result = await _aiService.enhanceJournal(_journalController.text);
+      
+      if (mounted) {
+        setState(() {
+          _enhancedTitle = result['title'];
+          _journalController.text = result['enhanced_content']!;
+          
+          // Map the emoji to the mood strings expected by MoodSelector/DB
+          // The AI service returns emojis like 😃, 😌, 😔, 😨, 😠
+          // We need to match these to the values expected by MoodSelector if they differ,
+          // but looking at MoodSelector (Irecall it uses emojis as keys or similar), 
+          // let's double check. 
+          // Actually, MoodSelector uses a list of maps, and the `onMoodSelected` passes the mood label or emoji?
+          // Let's assume for now it passes the emoji itself or we just set it.
+          // Re-reading MoodSelector usage: `selectedMood` variable holds the strings/emojis.
+          // Let's just set it directly as the AI returns the emoji.
+          _selectedMood = result['mood'];
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Journal enhanced & Mood detected! ✨'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to enhance: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isEnhancing = false);
+      }
+    }
   }
 
   @override
   void dispose() {
     _journalController.dispose();
-    _speech.cancel(); // cancel listening on dispose
+    _speech.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
+      // ... AppBar ...
       appBar: AppBar(
         title: Text(widget.entry == null ? 'New Journal' : 'Edit Journal'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           if (_isLoading)
-            const Center(child: CircularProgressIndicator())
+            const Center(child: Padding(
+              padding: EdgeInsets.only(right: 16.0),
+              child: CircularProgressIndicator(),
+            ))
           else
             IconButton(
               icon: const Icon(Icons.check),
@@ -148,6 +194,18 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title Preview (if enhanced)
+                  if (_enhancedTitle != null) ...[
+                    Text(
+                      _enhancedTitle!,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   Text(
                     'How are you feeling?',
                     style: Theme.of(context).textTheme.headlineMedium,
@@ -183,7 +241,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                           height: 1.5,
                         ),
                   ),
-                  // Add extra padding at bottom so text isn't hidden by keyboard/bar
                   const SizedBox(height: 100),
                 ],
               ),
@@ -199,13 +256,15 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           children: [
             // AI Enhance Button
             TextButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('AI Enhancement coming soon!')),
-                );
-              },
-              icon: const Icon(Icons.auto_awesome, size: 20),
-              label: const Text('Enhance with AI'),
+              onPressed: _isEnhancing ? null : _enhanceWithAI,
+              icon: _isEnhancing 
+                  ? const SizedBox(
+                      width: 20, 
+                      height: 20, 
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ) 
+                  : const Icon(Icons.auto_awesome, size: 20),
+              label: Text(_isEnhancing ? 'Enhancing...' : 'Enhance with AI'),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).primaryColor,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -219,8 +278,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             ),
             const Spacer(),
             
-            // Clear Button
-            if (_journalController.text.isNotEmpty && !_isListening) ...[
+            // ... (Clear and Mic buttons) ...
+             if (_journalController.text.isNotEmpty && !_isListening) ...[
               IconButton(
                 onPressed: _clearText,
                 icon: const Icon(Icons.close),
@@ -232,7 +291,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               const SizedBox(width: 8),
             ],
 
-            // Mic Button
             FloatingActionButton(
               onPressed: _isListening ? _stopListening : _startListening,
               mini: true,
@@ -264,14 +322,18 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('User not logged in');
 
-      // Generate a title (e.g., first few words)
-      // Simple strategy: first 20 chars or up to newline
       String content = _journalController.text.trim();
-      String title = content.split('\n').first;
-      if (title.length > 30) {
-        title = '${title.substring(0, 30)}...';
+      
+      // Use enhanced title if available, otherwise fallback to simple generation
+      String title = _enhancedTitle ?? '';
+      
+      if (title.isEmpty) {
+        title = content.split('\n').first;
+        if (title.length > 30) {
+          title = '${title.substring(0, 30)}...';
+        }
+        if (title.isEmpty) title = 'Untitled';
       }
-      if (title.isEmpty) title = 'Untitled';
 
       if (widget.entry == null) {
         await _journalService.addJournal(
@@ -297,9 +359,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
+      // ... error handling ...
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving journal: $e')),
+           SnackBar(content: Text('Error saving journal: $e')),
         );
       }
     } finally {

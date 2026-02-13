@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../theme/theme_provider.dart';
 import '../widgets/gradient_scaffold.dart';
+import 'help_support_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -48,7 +49,12 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.help_outline),
             title: const Text('Help & Support'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpSupportScreen()),
+              );
+            },
           ),
           const Divider(),
           ListTile(
