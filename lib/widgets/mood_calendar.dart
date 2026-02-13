@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/daily_mood.dart';
-import '../services/mood_service.dart';
+import '../models/journal_entry.dart';
+import '../services/journal_service.dart';
 
 class MoodCalendar extends StatefulWidget {
   const MoodCalendar({super.key});
@@ -12,7 +12,7 @@ class MoodCalendar extends StatefulWidget {
 }
 
 class _MoodCalendarState extends State<MoodCalendar> {
-  final MoodService _moodService = MoodService();
+  final JournalService _journalService = JournalService();
   final User? _user = FirebaseAuth.instance.currentUser;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -29,24 +29,24 @@ class _MoodCalendarState extends State<MoodCalendar> {
       return const SizedBox.shrink();
     }
 
-    return StreamBuilder<List<DailyMood>>(
-      stream: _moodService.getMoodsForMonth(_user.uid, _focusedDay),
+    return StreamBuilder<List<JournalEntry>>(
+      stream: _journalService.getJournals(_user.uid),
       builder: (context, snapshot) {
-        final moods = snapshot.data ?? [];
-        Map<DateTime, List<DailyMood>> events = {};
+        final journals = snapshot.data ?? [];
+        Map<DateTime, List<JournalEntry>> events = {};
         
-        for (var mood in moods) {
+        for (var entry in journals) {
            // Normalize date to remove time part for accurate matching
-          final date = DateTime(mood.date.year, mood.date.month, mood.date.day);
+          final date = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
           if (events[date] == null) {
             events[date] = [];
           }
-          events[date]!.add(mood);
+          events[date]!.add(entry);
         }
 
         return Column(
           children: [
-            TableCalendar<DailyMood>(
+            TableCalendar<JournalEntry>(
               firstDay: DateTime.utc(2020, 1, 1),
               lastDay: DateTime.utc(2030, 12, 31),
               focusedDay: _focusedDay,
@@ -97,55 +97,47 @@ class _MoodCalendarState extends State<MoodCalendar> {
                 rightChevronIcon: Icon(Icons.chevron_right, size: 28),
               ),
               calendarBuilders: CalendarBuilders(
-                markerBuilder: (context, date, events) {
-                  if (events.isNotEmpty) {
-                    return Positioned(
-                      bottom: -2,
+                // Custom builder for days with journals
+                defaultBuilder: (context, day, focusedDay) {
+                  final date = DateTime(day.year, day.month, day.day);
+                  if (events[date]?.isNotEmpty ?? false) {
+                     return Container(
+                      margin: const EdgeInsets.all(6),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.green[800], // Dark green for journaled days
+                        shape: BoxShape.circle,
+                      ),
                       child: Text(
-                        events.first.mood,
-                        style: const TextStyle(fontSize: 20), // Larger emoji
+                        '${day.day}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     );
                   }
-                  return null;
+                  return null; // Use default for others
                 },
-                defaultBuilder: (context, date, focusedDay) {
+                // Also override today builder if it has an event to ensure color consistency
+                todayBuilder: (context, day, focusedDay) {
+                  final date = DateTime(day.year, day.month, day.day);
+                  final hasJournal = events[date]?.isNotEmpty ?? false;
+                  
                   return Container(
-                    margin: const EdgeInsets.all(4),
-                    alignment: Alignment.topCenter,
-                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        '${date.day}',
-                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                todayBuilder: (context, date, focusedDay) {
-                  return Container(
-                    margin: const EdgeInsets.all(4),
-                    alignment: Alignment.topCenter,
+                    margin: const EdgeInsets.all(6),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                       borderRadius: BorderRadius.circular(12),
-                       border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.5)),
+                      // If journal exists, use dark green, else use simple outline/indicator for "Today"
+                      color: hasJournal ? Colors.green[800] : Theme.of(context).primaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: hasJournal ? null : Border.all(color: Theme.of(context).primaryColor),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        '${date.day}',
-                         style: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    child: Text(
+                      '${day.day}',
+                      style: TextStyle(
+                        color: hasJournal ? Colors.white : Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   );

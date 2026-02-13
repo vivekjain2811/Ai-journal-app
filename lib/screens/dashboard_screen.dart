@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/gradient_scaffold.dart';
 import '../models/journal_entry.dart';
+import '../models/user_model.dart';
 import '../services/journal_service.dart';
+import '../services/user_service.dart';
 import 'journal_entry_screen.dart';
 import '../widgets/mood_card.dart';
 import '../widgets/mood_calendar.dart';
@@ -29,53 +31,77 @@ class DashboardScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   // Date or Greeting
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                       Text(
-                        'Good Morning,',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+              if (user != null)
+                StreamBuilder<UserModel?>(
+                  stream: UserService().getUserProfile(user.uid),
+                  builder: (context, snapshot) {
+                    final userData = snapshot.data;
+                    final displayName = userData?.username?.isNotEmpty == true 
+                        ? userData!.username! 
+                        : (user.displayName ?? 'User');
+                    final photoUrl = userData?.photoUrl ?? user.photoURL;
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Date or Greeting
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              () {
+                                final hour = DateTime.now().hour;
+                                if (hour >= 5 && hour < 12) {
+                                  return 'Good Morning,';
+                                } else if (hour >= 12 && hour < 17) {
+                                  return 'Good Afternoon,';
+                                } else if (hour >= 17 && hour < 21) {
+                                  return 'Good Evening,';
+                                } else {
+                                  return 'Good Night,'; // Late night
+                                }
+                              }(),
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              displayName,
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'User', // Ideally user's name
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.grey[300]!, width: 2),
+                            ),
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundImage: photoUrl != null
+                                  ? NetworkImage(photoUrl)
+                                  : const NetworkImage('https://i.pravatar.cc/150?img=12'),
+                              backgroundColor: Colors.grey,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey[300]!, width: 2),
-                      ),
-                      child: const CircleAvatar(
-                        radius: 20,
-                        backgroundImage: NetworkImage(
-                            'https://i.pravatar.cc/150?img=12'), // Placeholder
-                        backgroundColor: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                      ],
+                    );
+                  },
+                ),
               const SizedBox(height: 32),
 
               // Mood Calendar (Weekly view by default implies "Check-in")

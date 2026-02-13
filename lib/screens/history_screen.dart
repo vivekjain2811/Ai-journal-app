@@ -13,20 +13,20 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _HistoryScreenState extends State<HistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   final JournalService _journalService = JournalService();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _searchController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -38,18 +38,12 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         title: const Text('History'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'All Journals'),
-            Tab(text: 'AI Journals'),
-          ],
-        ),
+        centerTitle: true,
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -78,11 +72,10 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No journals found directly.'));
+                  return const Center(child: Text('No journals found.'));
                 }
 
                 final allJournals = snapshot.data!;
-                // Filter by search if needed (client-side for now)
                 final searchTerm = _searchController.text.toLowerCase();
                 final filteredJournals = searchTerm.isEmpty
                     ? allJournals
@@ -92,18 +85,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                             j.content.toLowerCase().contains(searchTerm))
                         .toList();
                 
-                // TODO: 'isAI' is not yet in the model, assuming all are general for now or filtered by logic
-                // For this implementation, both tabs will show same data or we can filter if we add isAI field later.
-                // Or maybe 'AI Journals' are ones with a specific tag? 
-                // For now, let's just show all in 'All Journals' and maybe empty or same in 'AI Journals' until defined.
-                
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildJournalList(filteredJournals),
-                    const Center(child: Text('AI Journals feature coming soon')), 
-                  ],
-                );
+                return _buildJournalList(filteredJournals);
               },
             ),
           ),

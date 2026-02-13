@@ -34,50 +34,86 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   
-  // Re-write _listen to be safer for appending
-  void _toggleListening() async {
-    if (_isListening) {
-       _speech.stop();
-       setState(() => _isListening = false);
-       return;
+  void _startListening() async {
+    // If not already explicitly listening, set state
+    if (!_isListening) {
+      setState(() => _isListening = true);
     }
 
+    // Initialize if not already initialized or just re-initialize to be safe
     bool available = await _speech.initialize(
       onStatus: (val) {
         if (mounted) {
+           // If system signals end of listening...
            if (val == 'done' || val == 'notListening') {
-             setState(() => _isListening = false);
+             // Check if we SHOULD be listening (User hasn't pressed stop)
+             if (_isListening) {
+                // Restart immediately
+                _startSpeechSession();
+             }
            }
         }
       },
-      onError: (val) => debugPrint('onError: $val'),
+      onError: (val) {
+        debugPrint('onError: $val');
+        // On error (timeout, no match), restart if we should be listening
+        if (mounted && _isListening) {
+           _startSpeechSession();
+        }
+      },
+      debugLogging: true, // Enable logs for debugging if needed
     );
 
     if (available) {
-      setState(() => _isListening = true);
-      // Store current text length to append? 
-      // Actually, speech_to_text provides cumulative results for a session.
-      // So we can capture the text BEFORE session, and add the result.
-      String originalText = _journalController.text;
-      
-      _speech.listen(
-        onResult: (val) {
-          if (mounted) {
-            setState(() {
-              String newText = val.recognizedWords;
-              if (originalText.isNotEmpty) {
-                 _journalController.text = "$originalText $newText";
-              } else {
-                 _journalController.text = newText;
-              }
-              // Move cursor to end
-              _journalController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: _journalController.text.length));
-            });
-          }
-        },
-      );
+      _startSpeechSession();
+    } else {
+      if (mounted) setState(() => _isListening = false);
     }
+  }
+
+  void _startSpeechSession() {
+    // Verify we are still supposed to be listening before calling listen
+    if (!_isListening) return;
+
+    // Capture current text to append new speech to it
+    String originalText = _journalController.text;
+    if (originalText.isNotEmpty && !originalText.endsWith(' ')) {
+      originalText += ' ';
+    }
+    
+    _speech.listen(
+      onResult: (val) {
+        if (mounted) {
+          setState(() {
+            // Only update text if we have recognized words
+            if (val.recognizedWords.isNotEmpty) {
+               _journalController.text = "$originalText${val.recognizedWords}";
+               
+               // Move cursor to end
+               _journalController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _journalController.text.length));
+            }
+          });
+        }
+      },
+      listenFor: const Duration(seconds: 60), // Set a reasonable duration loop
+      pauseFor: const Duration(seconds: 60), // Try to keep it open
+      cancelOnError: false,
+      partialResults: true,
+    );
+  }
+
+  void _stopListening() {
+    // First update state to prevent auto-restart logic
+    setState(() => _isListening = false);
+    // Then stop the engine
+    _speech.stop();
+  }
+
+  void _clearText() {
+    setState(() {
+      _journalController.clear();
+    });
   }
 
   @override
@@ -129,57 +165,85 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   TextField(
                     controller: _journalController,
                     maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
                     decoration: InputDecoration(
                       hintText: 'Write your thoughts here...',
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
                       hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).hintColor.withValues(alpha: 0.5),
+                            color: Theme.of(context).hintColor.withOpacity(0.5),
                           ),
                     ),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           height: 1.5,
                         ),
                   ),
+                  // Add extra padding at bottom so text isn't hidden by keyboard/bar
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
           ),
-          // Bottom Actions
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+        ],
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            // AI Enhance Button
+            TextButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('AI Enhancement coming soon!')),
+                );
+              },
+              icon: const Icon(Icons.auto_awesome, size: 20),
+              label: const Text('Enhance with AI'),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: Theme.of(context).primaryColor.withOpacity(0.5),
+                  ),
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: PrimaryButton(
-                    text: 'Enhance with AI ✨',
-                    isOutlined: true,
-                    onPressed: () {
-                      // AI Enhance functionality stub
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('AI Enhancement coming soon!')),
-                      );
-                    },
-                  ),
+            const Spacer(),
+            
+            // Clear Button
+            if (_journalController.text.isNotEmpty && !_isListening) ...[
+              IconButton(
+                onPressed: _clearText,
+                icon: const Icon(Icons.close),
+                tooltip: 'Clear',
+                style: IconButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
                 ),
-              ],
+              ),
+              const SizedBox(width: 8),
+            ],
+
+            // Mic Button
+            FloatingActionButton(
+              onPressed: _isListening ? _stopListening : _startListening,
+              mini: true,
+              elevation: 0,
+              backgroundColor: _isListening 
+                  ? Colors.redAccent 
+                  : Theme.of(context).primaryColor,
+              child: Icon(_isListening ? Icons.stop : Icons.mic, color: Colors.white),
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _toggleListening,
-        backgroundColor: _isListening ? Colors.redAccent : Theme.of(context).primaryColor,
-        child: Icon(_isListening ? Icons.mic_off : Icons.mic),
+          ],
+        ),
       ),
     );
   }
