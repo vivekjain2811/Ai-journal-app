@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/journal_service.dart';
+
 import 'dashboard_screen.dart';
 // Will implement these screens soon
 import 'history_screen.dart'; 
 import 'settings_screen.dart';
-import 'journal_entry_screen.dart';
+import 'journal_entry_screen.dart'; 
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -20,6 +24,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const HistoryScreen(), // Placeholder
     const SettingsScreen(), // Placeholder
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+  }
+
+
 
   void _onItemTapped(int index) {
     setState(() {

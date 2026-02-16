@@ -5,7 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/journal_entry.dart';
 import '../services/journal_service.dart';
-import '../services/ai_service.dart';
+import '../services/ai_service.dart'; // Restore this import
+
+
+
 import '../widgets/mood_selector_row.dart';
 import '../widgets/ai_suggestion_sheet.dart';
 import '../widgets/gradient_scaffold.dart';
@@ -34,6 +37,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
   Timer? _autoSaveTimer;
   int _wordCount = 0;
   String _lastSavedStatus = 'Draft';
+  String _textBeforeListening = ''; // Store text before listening starts
 
   // Animation controller for mic pulse
   late AnimationController _micController;
@@ -107,14 +111,14 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
         },
       );
       if (available) {
+        _textBeforeListening = _journalController.text; // Capture current text
         setState(() => _isListening = true);
         _speech.listen(
           onResult: (val) {
              setState(() {
                 if (val.recognizedWords.isNotEmpty) {
-                  // Append logic to append text
-                  final currentText = _journalController.text;
-                  final newText = "$currentText ${val.recognizedWords}"; 
+                  // Append recognized words to the ORIGINAL text
+                   final newText = "$_textBeforeListening ${val.recognizedWords}"; 
                    _journalController.text = newText;
                    _journalController.selection = TextSelection.fromPosition(
                       TextPosition(offset: _journalController.text.length));
@@ -218,6 +222,9 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
           ),
         );
       }
+      
+      // Cancel reminders as the user has journaled
+
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {

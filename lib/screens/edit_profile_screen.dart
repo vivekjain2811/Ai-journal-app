@@ -49,6 +49,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
+      final int sizeInBytes = await image.length();
+      final double sizeInMb = sizeInBytes / (1024 * 1024);
+
+      if (sizeInMb > 5) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture must be less than 5MB'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       setState(() {
         _imageFile = File(image.path);
       });

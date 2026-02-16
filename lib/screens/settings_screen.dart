@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../services/journal_service.dart';
+
 import '../models/user_model.dart';
 import '../theme/theme_provider.dart';
 import '../widgets/gradient_scaffold.dart';
@@ -10,8 +13,25 @@ import 'help_support_screen.dart';
 import 'edit_profile_screen.dart';
 import 'privacy_security_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+
+
+  @override
+  void initState() {
+    super.initState();
+
+  }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +63,7 @@ class SettingsScreen extends StatelessWidget {
                   Provider.of<ThemeProvider>(context, listen: false).toggleTheme(value);
                 },
               ),
+
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.person_outline),
@@ -67,26 +88,6 @@ class SettingsScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const PrivacySecurityScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.notifications_outlined),
-                title: const Text('Notifications'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Feature Coming Soon'),
-                      content: const Text('We are working hard to bring you notifications! Stay tuned.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
                     ),
                   );
                 },

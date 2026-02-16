@@ -61,4 +61,19 @@ class JournalService {
   Future<void> deleteJournal(String id) async {
     await _journalCollection.doc(id).delete();
   }
+
+  Future<bool> hasJournaledToday(String userId) async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final querySnapshot = await _journalCollection
+        .where('userId', isEqualTo: userId)
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+        .limit(1)
+        .get();
+
+    return querySnapshot.docs.isNotEmpty;
+  }
 }
