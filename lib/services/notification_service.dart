@@ -18,8 +18,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   // CHANGE CHANNEL ID TO FORCE UPDATE ON DEVICE
-  static const String channelId = 'journal_reminders_v2'; 
-  static const String channelName = 'Journal Reminders';
+  static const String channelId = 'journal_reminders_v5_final'; 
+  static const String channelName = 'Daily Journal Reminders';
   static const String channelDescription = 'Reminds you to write your journal';
 
   Future<void> init() async {
@@ -52,6 +52,8 @@ class NotificationService {
       channelName,
       description: channelDescription,
       importance: Importance.max, // Explicitly set to MAX
+      playSound: true,
+      enableVibration: true,
     );
 
     await flutterLocalNotificationsPlugin
@@ -63,12 +65,23 @@ class NotificationService {
   Future<void> configureLocalTimeZone() async {
     tz.initializeTimeZones();
     try {
-      final String timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
+      String timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
+      
+      // Fix for devices returning legacy "Asia/Calcutta"
+      if (timeZoneName == 'Asia/Calcutta') {
+        timeZoneName = 'Asia/Kolkata';
+      }
+
       tz.setLocalLocation(tz.getLocation(timeZoneName));
       debugPrint('Local timezone set to: $timeZoneName');
     } catch (e) {
       debugPrint('Could not get local timezone: $e');
-      // Fallback to UTC or a default widely used link if needed, but usually 'UTC' is safe default
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+        debugPrint('Fallback to Asia/Kolkata success');
+      } catch (e2) {
+         debugPrint('Fallback failed. Using UTC. Error: $e2');
+      }
     }
   }
 
@@ -95,6 +108,11 @@ class NotificationService {
       return notificationStatus.isGranted;
     }
     return true;
+  }
+  
+  // Method to check if permissions are granted
+  Future<bool> arePermissionsGranted() async {
+     return await Permission.notification.isGranted;
   }
 
   Future<void> cancelReminders() async {
@@ -154,27 +172,29 @@ class NotificationService {
        debugPrint('Exact Alarm Permission Status: $status');
     }
 
-    // TEST NOTIFICATION: Schedule one for 10 seconds from now to verify it works
+    // TEST NOTIFICATION: Schedule one for 5 seconds from now to verify it works
     try {
        await flutterLocalNotificationsPlugin.zonedSchedule(
           999, // Unique ID for test
-          'Scheduled Test ⏳',
-          'This is a SCHEDULED notification (10s delay).',
-          now.add(const Duration(seconds: 10)),
+          'Scheduled Test (V5 - AlarmClock) ⏳',
+          'This is a SCHEDULED notification. If you see this, you are good!',
+          now.add(const Duration(seconds: 5)),
           const NotificationDetails(
             android: AndroidNotificationDetails(
               channelId,
               channelName,
               channelDescription: channelDescription,
-              importance: Importance.max, // Ensure MAX importance
+              importance: Importance.max,
               priority: Priority.high,
+              playSound: true,
+              enableVibration: true,
             ),
           ),
           androidScheduleMode: AndroidScheduleMode.alarmClock, // STRONGER TRIGGER
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
         );
-        debugPrint('Scheduled TEST notification for 10 seconds from now');
+        debugPrint('Scheduled TEST notification for 5 seconds from now');
     } catch (e) {
         debugPrint('Error scheduling TEST notification: $e');
     }
@@ -197,11 +217,13 @@ class NotificationService {
                 channelId,
                 channelName,
                 channelDescription: channelDescription,
-                importance: Importance.high,
+                importance: Importance.max,
                 priority: Priority.high,
+                playSound: true,
+                enableVibration: true,
               ),
             ),
-            androidScheduleMode: AndroidScheduleMode.alarmClock, // STRONGER TRIGGER
+            androidScheduleMode: AndroidScheduleMode.alarmClock,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
           );
