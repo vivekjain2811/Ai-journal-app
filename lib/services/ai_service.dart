@@ -24,22 +24,28 @@ class AIService {
             {
               'role': 'system',
               'content': '''
-You are an empathetic ai journaling assistant. Analyze the user's journal entry.
-Return a JSON object with 3 keys: "title", "enhanced_content", and "mood".
+You are an expert editor. 
+Your task is to Analyze the user's journal entry and return a JSON object.
 
-1. "title": A specific, creative, and relevant title (max 7 words) that reflects the EXACT topic of the entry. Avoid generic titles like "Journal Analysis" or "Daily Thoughts". Example: "Feeling Sad After Interview" or "Amazing Trip to Paris".
-2. "enhanced_content": Improve the grammar, flow, and clarity of the paragraph. Remove unnecessary words but potentially expand slightly to make it more expressive. KEEP the user's original voice and meaning.
-3. "mood": Detect the mood from the text. Return EXACTLY ONE of these emojis: �, 😌, 😔, �, 😠. (Happy, Calm, Sad, Anxious, Angry). If unsure, guess the closest one.
+RULES:
+1. Return ONLY valid JSON. 
+2. Do NOT use markdown code blocks (like ```json).
+3. Do NOT include any conversational text.
+4. The JSON must have exactly these 3 keys:
+   - "title": A short, specific title (max 7 words).
+   - "enhanced_content": The journal entry rephrased for better grammar, flow, and clarity. Fix ALL grammar mistakes. Keep the same meaning but make it sound better.
+   - "mood": One single emoji representing the mood (😐, 😌, 😔, 😬, 😠).
 
-output JSON only.
+Example Response:
+{"title": "My Day", "enhanced_content": "Today was a good day.", "mood": "😌"}
 '''
             },
             {
               'role': 'user',
-              'content': content
+              'content': 'Journal Content to enhance:\n"$content"\n\nRemember: JSON ONLY.'
             }
           ],
-          'temperature': 0.7,
+          'temperature': 0.3, // Lower temperature for more deterministic/valid JSON
         }),
       );
 
@@ -47,11 +53,19 @@ output JSON only.
         final data = jsonDecode(response.body);
         String contentString = data['choices'][0]['message']['content'];
         
-        // Robust cleaning: remove markdown code blocks
-        if (contentString.contains('```json')) {
-          contentString = contentString.split('```json')[1].split('```')[0].trim();
-        } else if (contentString.contains('```')) {
-          contentString = contentString.split('```')[1].split('```')[0].trim();
+        debugPrint('Raw AI Response: $contentString'); 
+
+        // 1. Sanitize: Remove markdown code blocks if present
+        contentString = contentString.replaceAll('```json', '').replaceAll('```', '').trim();
+
+        // 2. Find JSON bounds
+        final startIndex = contentString.indexOf('{');
+        final endIndex = contentString.lastIndexOf('}');
+
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+          contentString = contentString.substring(startIndex, endIndex + 1);
+        } else {
+           throw FormatException('No JSON object found in response');
         }
         
         try {
@@ -62,9 +76,9 @@ output JSON only.
             'mood': jsonResponse['mood']?.toString() ?? '😐',
           };
         } catch (e) {
-          debugPrint('Error parsing inner JSON: $e');
-          debugPrint('Raw content was: $contentString');
-          // Fallback if model doesn't return valid JSON
+          debugPrint('JSON Syntax Error: $e');
+          debugPrint('Problematic String: $contentString');
+          // Fallback
           return {
             'title': 'Journal Entry', 
             'enhanced_content': content,
