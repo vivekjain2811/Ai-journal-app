@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/journal_entry.dart';
 import '../services/journal_service.dart';
 import '../services/ai_service.dart'; // Restore this import
+import '../services/notification_service.dart';
 
 
 
@@ -224,6 +225,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
       }
       
       // Cancel reminders as the user has journaled
+      await NotificationService().completeForToday();
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
