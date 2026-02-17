@@ -254,7 +254,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
               _getFormattedDate(),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontSize: 12,
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                   ),
             ),
           ],
@@ -284,7 +284,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -330,7 +330,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -348,7 +348,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                         Text(
                           '$_wordCount words',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.withOpacity(0.7),
+                            color: Colors.grey.withValues(alpha: 0.7),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -356,7 +356,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                         Container(
                           width: 4, height: 4,
                           decoration: BoxDecoration(
-                             color: Colors.grey.withOpacity(0.4),
+                             color: Colors.grey.withValues(alpha: 0.4),
                              shape: BoxShape.circle,
                           ),
                         ),
@@ -366,7 +366,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: _lastSavedStatus == 'Saved' 
                                 ? Colors.green 
-                                : Colors.grey.withOpacity(0.7),
+                                : Colors.grey.withValues(alpha: 0.7),
                              fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -380,7 +380,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                     decoration: InputDecoration(
                        hintText: 'Title (optional)',
                        hintStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.grey.withOpacity(0.5),
+                          color: Colors.grey.withValues(alpha: 0.5),
                           fontWeight: FontWeight.bold,
                        ),
                        border: InputBorder.none,
@@ -406,7 +406,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Colors.grey.withOpacity(0.5),
+                              color: Colors.grey.withValues(alpha: 0.5),
                               fontSize: 18,
                             ),
                           contentPadding: EdgeInsets.zero,
@@ -466,13 +466,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                      shape: BoxShape.circle,
                      boxShadow: [
                        BoxShadow(
-                         color: Colors.black.withOpacity(0.1),
+                         color: Colors.black.withValues(alpha: 0.1),
                          blurRadius: 8,
                          offset: const Offset(0, 4),
                        )
                      ],
                      border: Border.all(
-                       color: Theme.of(context).dividerColor.withOpacity(0.1),
+                       color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
                      ),
                    ),
                    child: Icon(

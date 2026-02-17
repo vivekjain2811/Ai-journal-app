@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../models/journal_entry.dart';
 import '../services/journal_service.dart';
@@ -43,7 +42,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         centerTitle: true,
       ),
       body: StreamBuilder<List<JournalEntry>>(
-        stream: _journalService.getJournals(_userId!),
+        stream: _journalService.getJournals(_userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -97,7 +96,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -212,7 +211,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     )
@@ -314,7 +313,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           horizontalInterval: 1, // Draw line for every integer
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               strokeWidth: 1,
             );
           },
@@ -345,7 +344,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: maxY, 
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
           ),
         ),
       ],
@@ -370,7 +369,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
            horizontalInterval: 1,
            getDrawingHorizontalLine: (value) {
              return FlLine(
-               color: Colors.grey.withOpacity(0.1),
+               color: Colors.grey.withValues(alpha: 0.1),
                strokeWidth: 1,
              );
            },
@@ -436,7 +435,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
               show: true,
-              color: primaryColor.withOpacity(0.2),
+              color: primaryColor.withValues(alpha: 0.2),
             ),
           ),
         ],
@@ -453,7 +452,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
            BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -464,7 +463,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 28),

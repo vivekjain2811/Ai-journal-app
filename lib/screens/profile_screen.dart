@@ -4,6 +4,7 @@ import '../models/user_model.dart';
 import '../services/user_service.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/gradient_scaffold.dart';
+import '../services/journal_service.dart'; // Add import
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -78,12 +79,26 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 
                 // Stats Row (Mock data for now or real if implementing count)
-                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildStatCard(context, 'Total Entries', '42'), // TODO: Connect to real count
-                    _buildStatCard(context, 'Day Streak', '5 🔥'), // TODO: Connect to real streak
-                  ],
+                // Stats Row
+                StreamBuilder<Map<String, dynamic>>(
+                  stream: JournalService().getJournalStats(user?.uid ?? ''),
+                  builder: (context, statsSnapshot) {
+                    String entriesCount = '-';
+                    String streakCount = '-';
+
+                    if (statsSnapshot.hasData) {
+                      entriesCount = statsSnapshot.data!['totalEntries'].toString();
+                      streakCount = '${statsSnapshot.data!['currentStreak']} 🔥';
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildStatCard(context, 'Total Entries', entriesCount),
+                        _buildStatCard(context, 'Day Streak', streakCount),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 32),
                 
@@ -139,7 +154,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

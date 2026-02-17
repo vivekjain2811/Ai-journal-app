@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../services/journal_service.dart';
 
 import 'dashboard_screen.dart';
 // Will implement these screens soon

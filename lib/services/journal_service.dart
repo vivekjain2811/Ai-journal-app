@@ -76,4 +76,60 @@ class JournalService {
 
     return querySnapshot.docs.isNotEmpty;
   }
+  Stream<Map<String, dynamic>> getJournalStats(String userId) {
+    return getJournals(userId).map((entries) {
+      if (entries.isEmpty) {
+        return {'totalEntries': 0, 'currentStreak': 0};
+      }
+
+      // 1. Total Entries
+      int totalEntries = entries.length;
+
+      // 2. Current Streak
+      // Extract unique dates (ignoring time)
+      final uniqueDates = entries.map((e) {
+        final date = e.createdAt;
+        return DateTime(date.year, date.month, date.day);
+      }).toSet().toList();
+
+      // Sort descending (newest first)
+      uniqueDates.sort((a, b) => b.compareTo(a));
+
+      if (uniqueDates.isEmpty) return {'totalEntries': totalEntries, 'currentStreak': 0};
+
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final yesterdayDate = todayDate.subtract(const Duration(days: 1));
+
+      // Check if the most recent entry is today or yesterday
+      // If the last entry was before yesterday, the streak is broken (0).
+      if (uniqueDates.first.isBefore(yesterdayDate)) {
+         return {'totalEntries': totalEntries, 'currentStreak': 0};
+      }
+      
+      int streak = 0;
+      // We start checking from the most recent entry.
+      // Ideally, it should be Today or Yesterday.
+      DateTime checkDate = uniqueDates.first;
+      
+      // If the most recent entry is Today, we start counting from Today.
+      // If it is Yesterday, we start from Yesterday.
+      // We verified above that it IS either Today or Yesterday.
+
+      for (final date in uniqueDates) {
+        if (date.isAtSameMomentAs(checkDate)) {
+          streak++;
+          checkDate = checkDate.subtract(const Duration(days: 1));
+        } else {
+          // Gap found, streak ends
+          break;
+        }
+      }
+
+      return {
+        'totalEntries': totalEntries,
+        'currentStreak': streak,
+      };
+    });
+  }
 }

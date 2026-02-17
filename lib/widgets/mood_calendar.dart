@@ -129,7 +129,7 @@ class _MoodCalendarState extends State<MoodCalendar> {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       // If journal exists, use dark green, else use simple outline/indicator for "Today"
-                      color: hasJournal ? Colors.green[800] : Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: hasJournal ? Colors.green[800] : Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: hasJournal ? null : Border.all(color: Theme.of(context).primaryColor),
                     ),

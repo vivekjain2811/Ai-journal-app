@@ -79,7 +79,7 @@ class _MoodCardState extends State<MoodCard> {
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Color(int.parse(mood['color']!)).withOpacity(0.2)
+                                ? Color(int.parse(mood['color']!)).withValues(alpha: 0.2)
                                 : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
@@ -91,7 +91,7 @@ class _MoodCardState extends State<MoodCard> {
                             boxShadow: [
                               if (!isSelected)
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),

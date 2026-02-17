@@ -52,7 +52,7 @@ class _MoodSelectorState extends State<MoodSelector> {
                       boxShadow: [
                         if (isSelected)
                           BoxShadow(
-                            color: Theme.of(context).primaryColor.withOpacity(0.4),
+                            color: Theme.of(context).primaryColor.withValues(alpha: 0.4),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           )
