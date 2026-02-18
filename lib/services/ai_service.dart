@@ -93,4 +93,53 @@ Example Response:
       rethrow;
     }
   }
+
+  Future<String> chat(String message, String context) async {
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'model': 'llama-3.3-70b-versatile',
+          'messages': [
+            {
+              'role': 'system',
+              'content': '''
+You are a helpful, empathetic AI journaling assistant.
+The user is writing a journal entry. 
+Your goal is to answer their questions about what they have written, offer insights, or help them reflect deeper.
+
+CONTEXT (User's current journal entry):
+"$context"
+
+RULES:
+1. Be concise and supportive.
+2. If the user asks a question, answer it based on the context provided.
+3. If the user's text is empty, encourage them to start writing or offer a prompt.
+4. Do not return JSON. Return plain text conversation.
+'''
+            },
+            {
+              'role': 'user',
+              'content': message
+            }
+          ],
+          'temperature': 0.7, 
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'];
+      } else {
+        throw Exception('Failed to chat: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('AI Chat Error: $e');
+      rethrow;
+    }
+  }
 }

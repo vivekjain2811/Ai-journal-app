@@ -11,6 +11,7 @@ import '../services/ai_service.dart'; // Restore this import
 
 import '../widgets/mood_selector_row.dart';
 import '../widgets/ai_suggestion_sheet.dart';
+import '../widgets/ask_bottom_sheet.dart'; 
 import '../widgets/gradient_scaffold.dart';
 
 class JournalEntryScreen extends StatefulWidget {
@@ -424,67 +425,150 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
         ],
       ),
       
-      // Floating Action Buttons (Enhance + Mic)
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 20, right: 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Enhance Button
-             FloatingActionButton.extended(
-                heroTag: 'enhance',
-                onPressed: _isEnhancing ? null : _enhanceWithAI,
-                backgroundColor: Theme.of(context).primaryColor,
-                icon: _isEnhancing
-                    ? const SizedBox(
-                        width: 16, height: 16, 
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.auto_awesome, color: Colors.white),
-                label: Text(
-                  _isEnhancing ? 'Enhancing...' : 'Enhance',
-                  style: const TextStyle(color: Colors.white),
+      // Bottom Action Bar
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            )
+          ],
+        ),
+        child: SafeArea(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // 1. Ask Button
+              _buildActionButton(
+                 label: 'Ask',
+                 icon: Icons.chat_bubble_outline,
+                 color: Theme.of(context).primaryColor,
+                 onTap: _showAskSheet,
+              ),
+
+              // 2. Enhance Button (Center, prominent)
+              _buildActionButton(
+                 label: _isEnhancing ? 'Enhancing...' : 'Enhance',
+                 icon: Icons.auto_awesome,
+                 color: Colors.purpleAccent,
+                 onTap: _isEnhancing ? null : _enhanceWithAI,
+                 isPrimary: true,
+                 isLoading: _isEnhancing,
+              ),
+
+              // 3. Mic Button
+              GestureDetector(
+                onTap: _toggleListening,
+                child: AnimatedBuilder(
+                  animation: _micAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _isListening ? _micAnimation.value : 1.0,
+                      child: child,
+                    );
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                           color: _isListening ? Colors.red.withValues(alpha: 0.1) : Colors.transparent,
+                           shape: BoxShape.circle,
+                           border: Border.all(
+                             color: _isListening ? Colors.red : Colors.grey.withValues(alpha: 0.3),
+                             width: 1.5,
+                           ),
+                        ),
+                        child: Icon(
+                          _isListening ? Icons.stop : Icons.mic,
+                          color: _isListening ? Colors.red : Theme.of(context).textTheme.bodyMedium?.color,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                       Text(
+                        _isListening ? 'Stop' : 'Dictate',
+                        style: GoogleFonts.lato(
+                          fontSize: 12, 
+                          fontWeight: FontWeight.w600,
+                          color: _isListening ? Colors.red : Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-             const SizedBox(width: 16),
-             
-             // Mic Button
-             GestureDetector(
-               onTap: _toggleListening,
-               child: AnimatedBuilder(
-                 animation: _micAnimation,
-                 builder: (context, child) {
-                   return Transform.scale(
-                     scale: _isListening ? _micAnimation.value : 1.0,
-                     child: child,
-                   );
-                 },
-                 child: Container(
-                   height: 56, 
-                   width: 56,
-                   decoration: BoxDecoration(
-                     color: _isListening ? Colors.redAccent : Theme.of(context).cardColor,
-                     shape: BoxShape.circle,
-                     boxShadow: [
-                       BoxShadow(
-                         color: Colors.black.withValues(alpha: 0.1),
-                         blurRadius: 8,
-                         offset: const Offset(0, 4),
-                       )
-                     ],
-                     border: Border.all(
-                       color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-                     ),
-                   ),
-                   child: Icon(
-                     _isListening ? Icons.stop : Icons.mic,
-                     color: _isListening ? Colors.white : Theme.of(context).primaryColor,
-                   ),
-                 ),
+
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label, 
+    required IconData icon, 
+    required Color color, 
+    VoidCallback? onTap,
+    bool isPrimary = false,
+    bool isLoading = false,
+  }) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             Container(
+               padding: EdgeInsets.all(isPrimary ? 16 : 12),
+               decoration: BoxDecoration(
+                 color: isPrimary ? color : Colors.transparent,
+                 shape: BoxShape.circle,
+                 border: isPrimary 
+                    ? null 
+                    : Border.all(color: Colors.grey.withValues(alpha: 0.3), width: 1.5),
+                 boxShadow: isPrimary 
+                    ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))] 
+                    : null,
+               ),
+               child: isLoading 
+                  ? const SizedBox(
+                      width: 24, height: 24, 
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Icon(icon, color: isPrimary ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color, size: 24),
+             ),
+             const SizedBox(height: 4),
+             Text(
+               label,
+               style: GoogleFonts.lato(
+                 fontSize: 12, 
+                 fontWeight: FontWeight.w600,
+                 color: isPrimary ? color : Theme.of(context).textTheme.bodySmall?.color,
                ),
              ),
           ],
         ),
-      ),
+      );
+  }
+
+  void _showAskSheet() {
+    if (_journalController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Write something first to ask about!')),
+        );
+        return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AskBottomSheet(journalContext: _journalController.text),
     );
   }
 
