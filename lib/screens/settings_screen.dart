@@ -37,7 +37,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('reminders_enabled') ?? false;
-      _frequencyMinutes = prefs.getInt('reminder_interval') ?? 120;
+      int loadedFrequency = prefs.getInt('reminder_interval') ?? 120;
+      // Sanitize: If loaded value is not in our list (e.g. old test value 2), reset to 120
+      if (loadedFrequency < 60) {
+         _frequencyMinutes = 120;
+         prefs.setInt('reminder_interval', 120); // Update storage too
+      } else {
+         _frequencyMinutes = loadedFrequency;
+      }
     });
   }
 
@@ -100,54 +107,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                    ),
                  ),
                ],
-             ),
-           ),
-        if (_notificationsEnabled)
-           Padding(
-             padding: const EdgeInsets.only(top: 10.0),
-             child: Center(
-               child: TextButton.icon(
-                 onPressed: () async {
-                   await NotificationService().showInstantNotification();
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Sent test notification')),
-                   );
-                 },
-                 icon: const Icon(Icons.notifications_active),
-                 label: const Text('Send Instant Test Notification'),
-               ),
-             ),
-           ),
-        if (_notificationsEnabled)
-           Padding(
-             padding: const EdgeInsets.only(top: 10.0),
-             child: Center(
-               child: TextButton.icon(
-                 onPressed: () async {
-                   final now = DateTime.now();
-                   // Re-configure to be safe
-                   await NotificationService().configureLocalTimeZone();
-                   
-                   final tzNow = tz.TZDateTime.now(tz.local);
-                   final offset = tzNow.timeZoneOffset;
-                   
-                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'TZ Name: ${tz.local.name}\n'
-                          'Device Time: ${now.hour}:${now.minute}:${now.second}\n'
-                          'TZ Time: ${tzNow.hour}:${tzNow.minute}:${tzNow.second}\n'
-                          'Offset: ${offset.inHours}h ${offset.inMinutes.remainder(60)}m'
-                        ),
-                        duration: const Duration(seconds: 10),
-                      ),
-                    );
-                   }
-                 },
-                 icon: const Icon(Icons.access_time),
-                 label: const Text('Check Timezone Info'),
-               ),
              ),
            ),
       ],

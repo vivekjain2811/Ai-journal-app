@@ -26,7 +26,7 @@ class NotificationService {
     await configureLocalTimeZone();
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('app_icon');
 
     final DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
@@ -158,9 +158,11 @@ class NotificationService {
 
     debugPrint('Step 2: Checking date. Last: $lastDate, Today: $today');
 
-    if (lastDate == today) {
+    if (lastDate == today && intervalMinutes > 15) {
         debugPrint('Already journaled today. Reminders paused until tomorrow.');
         return; 
+    } else if (lastDate == today) {
+        debugPrint('Already journaled today, but interval is short ($intervalMinutes min). Assuming TEST mode. Scheduling anyway.');
     }
 
     final now = tz.TZDateTime.now(tz.local);
@@ -170,33 +172,6 @@ class NotificationService {
     if (defaultTargetPlatform == TargetPlatform.android) {
        final status = await Permission.scheduleExactAlarm.status;
        debugPrint('Exact Alarm Permission Status: $status');
-    }
-
-    // TEST NOTIFICATION: Schedule one for 5 seconds from now to verify it works
-    try {
-       await flutterLocalNotificationsPlugin.zonedSchedule(
-          999, // Unique ID for test
-          'Scheduled Test (V5 - AlarmClock) ⏳',
-          'This is a SCHEDULED notification. If you see this, you are good!',
-          now.add(const Duration(seconds: 5)),
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              channelId,
-              channelName,
-              channelDescription: channelDescription,
-              importance: Importance.max,
-              priority: Priority.high,
-              playSound: true,
-              enableVibration: true,
-            ),
-          ),
-          androidScheduleMode: AndroidScheduleMode.alarmClock, // STRONGER TRIGGER
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-        );
-        debugPrint('Scheduled TEST notification for 5 seconds from now');
-    } catch (e) {
-        debugPrint('Error scheduling TEST notification: $e');
     }
 
     int maxNotifications = 10; 
