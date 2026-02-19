@@ -152,17 +152,15 @@ class NotificationService {
     await prefs.setBool('reminders_enabled', true);
     await prefs.setInt('reminder_interval', intervalMinutes);
 
-    // If user has already journaled today, don't schedule anything new until tomorrow.
+    // If user has already journaled today, don't schedule anything new.
     final lastDate = prefs.getString('last_journal_date');
     final today = DateTime.now().toIso8601String().split('T')[0];
 
     debugPrint('Step 2: Checking date. Last: $lastDate, Today: $today');
 
-    if (lastDate == today && intervalMinutes > 15) {
-        debugPrint('Already journaled today. Reminders paused until tomorrow.');
+    if (lastDate == today) {
+        debugPrint('Already journaled today. Reminders paused.');
         return; 
-    } else if (lastDate == today) {
-        debugPrint('Already journaled today, but interval is short ($intervalMinutes min). Assuming TEST mode. Scheduling anyway.');
     }
 
     final now = tz.TZDateTime.now(tz.local);
@@ -214,7 +212,26 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     final today = DateTime.now().toIso8601String().split('T')[0];
     await prefs.setString('last_journal_date', today);
-    debugPrint('Journal completed for today. Reminders canceled.');
+    await prefs.setBool('reminders_auto_paused', true);
+    debugPrint('Journal completed for today. Reminders auto-paused.');
+  }
+
+  /// Resumes reminders after a journal deletion leaves no entries for today.
+  Future<void> resumeReminders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('reminders_enabled') ?? false;
+    if (!enabled) {
+      debugPrint('Reminders were not enabled. Nothing to resume.');
+      return;
+    }
+
+    // Clear the "journaled today" marker so scheduling proceeds
+    await prefs.remove('last_journal_date');
+    await prefs.setBool('reminders_auto_paused', false);
+
+    final interval = prefs.getInt('reminder_interval') ?? 120;
+    await scheduleReminders(intervalMinutes: interval);
+    debugPrint('Reminders resumed at $interval min interval after journal deletion.');
   }
 
   /// Checks if we need to resume reminders (e.g., app opened on a new day)

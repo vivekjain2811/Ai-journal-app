@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/journal_entry.dart';
 import '../widgets/journal_list_tile.dart';
 import '../services/journal_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/gradient_scaffold.dart';
 import 'journal_entry_screen.dart';
 
@@ -112,11 +113,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
             color: Colors.red,
             child: const Icon(Icons.delete, color: Colors.white),
           ),
-          onDismissed: (direction) {
-            _journalService.deleteJournal(journal.id);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${journal.title} deleted')),
-            );
+          onDismissed: (direction) async {
+            await _journalService.deleteJournal(journal.id);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${journal.title} deleted')),
+              );
+            }
+
+            // Check if the deleted entry was from today
+            final now = DateTime.now();
+            final entryDate = journal.createdAt;
+            final isToday = entryDate.year == now.year &&
+                entryDate.month == now.month &&
+                entryDate.day == now.day;
+
+            if (isToday) {
+              // Count remaining today-entries from the in-memory list
+              // (excluding the one we just deleted)
+              final remainingToday = journals.where((j) {
+                if (j.id == journal.id) return false; // skip deleted one
+                return j.createdAt.year == now.year &&
+                    j.createdAt.month == now.month &&
+                    j.createdAt.day == now.day;
+              }).length;
+
+              if (remainingToday == 0) {
+                await NotificationService().resumeReminders();
+              }
+            }
           },
           child: GestureDetector(
             onTap: () {

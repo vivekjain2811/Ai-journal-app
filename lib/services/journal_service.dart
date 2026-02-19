@@ -64,17 +64,24 @@ class JournalService {
 
   Future<bool> hasJournaledToday(String userId) async {
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
+    // Use the same index as getJournals (userId + createdAt desc) — no extra index needed
     final querySnapshot = await _journalCollection
         .where('userId', isEqualTo: userId)
-        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .where('createdAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+        .orderBy('createdAt', descending: true)
         .limit(1)
         .get();
 
-    return querySnapshot.docs.isNotEmpty;
+    if (querySnapshot.docs.isEmpty) return false;
+
+    final data = querySnapshot.docs.first.data() as Map<String, dynamic>;
+    final createdAt = data['createdAt'] as Timestamp?;
+    if (createdAt == null) return false;
+
+    final entryDate = createdAt.toDate();
+    return entryDate.year == now.year &&
+        entryDate.month == now.month &&
+        entryDate.day == now.day;
   }
   Stream<Map<String, dynamic>> getJournalStats(String userId) {
     return getJournals(userId).map((entries) {

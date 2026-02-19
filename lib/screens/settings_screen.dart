@@ -4,8 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../services/notification_service.dart';
+import '../services/journal_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:timezone/timezone.dart' as tz;
+
 
 import '../models/user_model.dart';
 import '../theme/theme_provider.dart';
@@ -24,6 +25,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _notificationsEnabled = false;
+  bool _isAutoPaused = false;
   int _frequencyMinutes = 120; // Default 2 hours (120 min)
   final NotificationService _notificationService = NotificationService();
 
@@ -35,32 +37,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedEnabled = prefs.getBool('reminders_enabled') ?? false;
+    final loadedFrequency = prefs.getInt('reminder_interval') ?? 120;
+
+    // Check local flag first
+    final lastJournalDate = prefs.getString('last_journal_date');
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    bool journaledToday = (lastJournalDate == today);
+
+    // If local flag says "journaled today", verify against Firestore
+    // in case journals were deleted (clears stale state)
+    if (journaledToday) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final actuallyJournaled = await JournalService().hasJournaledToday(user.uid);
+          if (!actuallyJournaled) {
+            // Journals were deleted — clear stale flags and resume
+            journaledToday = false;
+            await prefs.remove('last_journal_date');
+            await prefs.setBool('reminders_auto_paused', false);
+            // Resume reminders if they were enabled
+            if (savedEnabled) {
+              await _notificationService.scheduleReminders(intervalMinutes: loadedFrequency);
+            }
+          }
+        } catch (e) {
+          debugPrint('Error checking journal status: $e');
+        }
+      }
+    }
+
+    if (!mounted) return;
     setState(() {
-      _notificationsEnabled = prefs.getBool('reminders_enabled') ?? false;
-      int loadedFrequency = prefs.getInt('reminder_interval') ?? 120;
-      // Sanitize: If loaded value is not in our list (e.g. old test value 2), reset to 120
-      if (loadedFrequency < 60) {
-         _frequencyMinutes = 120;
-         prefs.setInt('reminder_interval', 120); // Update storage too
+      _frequencyMinutes = loadedFrequency;
+      if (savedEnabled && journaledToday) {
+        _notificationsEnabled = false;
+        _isAutoPaused = true;
       } else {
-         _frequencyMinutes = loadedFrequency;
+        _notificationsEnabled = savedEnabled;
+        _isAutoPaused = false;
       }
     });
   }
 
    Widget _buildReminderSection() {
+    String subtitle;
+    if (_isAutoPaused) {
+      subtitle = 'Paused — you already journaled today ✅';
+    } else if (_notificationsEnabled) {
+      subtitle = 'Active: Every ${_getFrequencyLabel(_frequencyMinutes)}';
+    } else {
+      subtitle = 'Disabled';
+    }
+
     return Column(
       children: [
         SwitchListTile(
           title: const Text('Daily Reminders'),
-          subtitle: Text(_notificationsEnabled ? 'Active: Every ${_getFrequencyLabel(_frequencyMinutes)}' : 'Disabled'),
+          subtitle: Text(subtitle),
           secondary: Icon(
-             _notificationsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined,
-             color: _notificationsEnabled ? Theme.of(context).primaryColor : Colors.grey,
+             _isAutoPaused
+                 ? Icons.notifications_paused
+                 : (_notificationsEnabled ? Icons.notifications_active : Icons.notifications_off_outlined),
+             color: _isAutoPaused
+                 ? Colors.orange
+                 : (_notificationsEnabled ? Theme.of(context).primaryColor : Colors.grey),
           ),
           value: _notificationsEnabled,
           onChanged: (bool value) async {
             if (value) {
+              // Check if already journaled — prevent re-enable
+              if (_isAutoPaused) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You already journaled today! Reminders will resume tomorrow.')),
+                  );
+                }
+                return;
+              }
               final granted = await _notificationService.requestPermissions();
               if (granted) {
                 await _notificationService.scheduleReminders(intervalMinutes: _frequencyMinutes);
@@ -76,11 +131,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await _notificationService.cancelReminders();
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool('reminders_enabled', false);
-              setState(() => _notificationsEnabled = false);
+              await prefs.setBool('reminders_auto_paused', false);
+              setState(() {
+                _notificationsEnabled = false;
+                _isAutoPaused = false;
+              });
             }
           },
         ),
-        if (_notificationsEnabled)
+        if (_notificationsEnabled || _isAutoPaused)
            Padding(
              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
              child: Row(
@@ -93,12 +152,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                      value: _frequencyMinutes,
                      items: const [
                        DropdownMenuItem(value: 2, child: Text('Every 2 Minutes (Test)')),
-                       DropdownMenuItem(value: 60, child: Text('Every 1 Hour')),
                        DropdownMenuItem(value: 120, child: Text('Every 2 Hours')),
-                       DropdownMenuItem(value: 240, child: Text('Every 4 Hours')),
+                       DropdownMenuItem(value: 180, child: Text('Every 3 Hours')),
                        DropdownMenuItem(value: 300, child: Text('Every 5 Hours')),
                      ],
-                     onChanged: (int? newValue) async {
+                     onChanged: _isAutoPaused ? null : (int? newValue) async {
                        if (newValue != null) {
                          setState(() => _frequencyMinutes = newValue);
                          await _notificationService.scheduleReminders(intervalMinutes: newValue);
