@@ -1,11 +1,12 @@
-import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/journal_entry.dart';
 import '../services/journal_service.dart';
-import '../services/ai_service.dart'; // Restore this import
+import '../services/ai_service.dart';
+import '../services/mood_service.dart';
 
 
 
@@ -34,10 +35,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
   bool _isLoading = false;
   bool _isEnhancing = false;
   bool _isListening = false;
-  // Removed _enhancedTitle variable as we now use _titleController
-  Timer? _autoSaveTimer;
   int _wordCount = 0;
-  String _lastSavedStatus = 'Draft';
+
   String _textBeforeListening = ''; // Store text before listening starts
 
   // Animation controller for mic pulse
@@ -53,15 +52,27 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
     )..repeat(reverse: true);
     _micAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(_micController);
 
+    _journalController.addListener(_updateWordCount);
+
     if (widget.entry != null) {
+      // Editing existing entry → load its saved mood
       _journalController.text = widget.entry!.content;
-      _titleController.text = widget.entry!.title; // Initialize title
+      _titleController.text = widget.entry!.title;
       _selectedMood = widget.entry!.mood;
       _updateWordCount();
-      _lastSavedStatus = 'Saved';
     } else {
-      _journalController.addListener(_onTextChanged);
-      _titleController.addListener(_onTextChanged); // Listen to title changes too
+      // New entry → pre-populate with today's daily mood from dashboard
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        MoodService()
+            .getDailyMood(user.uid, DateTime.now())
+            .first
+            .then((dailyMood) {
+          if (mounted && dailyMood != null) {
+            setState(() => _selectedMood = dailyMood.mood);
+          }
+        });
+      }
     }
   }
 
@@ -70,25 +81,12 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
     _journalController.dispose();
     _titleController.dispose();
     _micController.dispose();
-    _autoSaveTimer?.cancel();
+
     _speech.stop();
     super.dispose();
   }
 
-  void _onTextChanged() {
-    _updateWordCount();
-    // Debounce auto-save or just update status
-    _lastSavedStatus = 'Typing...';
-    setState(() {});
-    
-    // Simple auto-save simulation for UI feedback
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _lastSavedStatus = 'Saved');
-      }
-    });
-  }
+
 
   void _updateWordCount() {
     final text = _journalController.text.trim();
@@ -123,7 +121,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
                    _journalController.text = newText;
                    _journalController.selection = TextSelection.fromPosition(
                       TextPosition(offset: _journalController.text.length));
-                   _onTextChanged();
                 }
              });
           },
@@ -340,38 +337,17 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   // Header Stats (Word Count & Saved Status) - Moved to top
-                   Padding(
+                  Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$_wordCount words',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
-                          ),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '$_wordCount words',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 4, height: 4,
-                          decoration: BoxDecoration(
-                             color: Colors.grey.withValues(alpha: 0.4),
-                             shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _lastSavedStatus,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: _lastSavedStatus == 'Saved' 
-                                ? Colors.green 
-                                : Colors.grey.withValues(alpha: 0.7),
-                             fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
 
