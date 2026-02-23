@@ -6,7 +6,6 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/journal_entry.dart';
 import '../services/journal_service.dart';
 import '../services/ai_service.dart';
-import '../services/mood_service.dart';
 
 
 
@@ -55,24 +54,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> with SingleTick
     _journalController.addListener(_updateWordCount);
 
     if (widget.entry != null) {
-      // Editing existing entry → load its saved mood
       _journalController.text = widget.entry!.content;
       _titleController.text = widget.entry!.title;
       _selectedMood = widget.entry!.mood;
       _updateWordCount();
-    } else {
-      // New entry → pre-populate with today's daily mood from dashboard
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        MoodService()
-            .getDailyMood(user.uid, DateTime.now())
-            .first
-            .then((dailyMood) {
-          if (mounted && dailyMood != null) {
-            setState(() => _selectedMood = dailyMood.mood);
-          }
-        });
-      }
     }
   }
 
