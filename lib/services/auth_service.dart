@@ -33,6 +33,9 @@ class AuthService {
       );
       return userCredential;
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        throw 'Invalid credentials';
+      }
       throw e.message ?? 'An unknown error occurred during sign in.';
     }
   }

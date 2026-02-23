@@ -82,10 +82,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.auto_stories,
-                      size: 80,
-                      color: Colors.white,
+                    child: Image.asset(
+                      'assets/images/app_logo.png',
+                      width: 80,
+                      height: 80,
                     ),
                   ),
                 ),
