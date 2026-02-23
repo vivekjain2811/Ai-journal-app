@@ -93,8 +93,11 @@ class DashboardScreen extends StatelessWidget {
                               radius: 20,
                               backgroundImage: photoUrl != null
                                   ? NetworkImage(photoUrl)
-                                  : const NetworkImage('https://i.pravatar.cc/150?img=12'),
-                              backgroundColor: Colors.grey,
+                                  : null,
+                              backgroundColor: Colors.grey[300],
+                              child: photoUrl == null
+                                  ? Icon(Icons.person, size: 20, color: Colors.grey[600])
+                                  : null,
                             ),
                           ),
                         ),

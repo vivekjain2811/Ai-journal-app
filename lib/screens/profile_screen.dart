@@ -48,7 +48,10 @@ class ProfileScreen extends StatelessWidget {
                   backgroundColor: Colors.grey[300],
                   backgroundImage: photoUrl != null 
                       ? NetworkImage(photoUrl) 
-                      : const NetworkImage('https://i.pravatar.cc/150?img=12'), // Fallback placeholder
+                      : null,
+                  child: photoUrl == null
+                      ? Icon(Icons.person, size: 50, color: Colors.grey[600])
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 
